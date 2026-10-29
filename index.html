@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test di Affinità e Somiglianza</title>
+    <!-- Tailwind CSS e Google Fonts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        
+        <!-- Intestazione iniziale -->
+        <div id="header-section" class="text-center mb-8 space-y-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white mb-2">Test di Affinità e Somiglianza</h1>
+                <p class="text-slate-400 text-sm">Rispondi alle affermazioni per calcolare i tuoi indici di compatibilità.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                <button onclick="startQuiz()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                    Inizia il Test
+                </button>
+                <button onclick="showLookupScreen()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                    Cerca per Codice
+                </button>
+            </div>
+        </div>
+
+        <!-- Sezione Inserimento Codice (Lookup) -->
+        <div id="lookup-screen" class="hidden space-y-6">
+            <div class="text-center">
+                <h2 class="text-xl font-bold text-white mb-1">Visualizza Risposte per Codice</h2>
+                <p class="text-slate-400 text-xs">Inserisci il codice univoco ricevuto al termine del test.</p>
+            </div>
+            <div class="space-y-3">
+                <input type="text" id="lookup-code-input" placeholder="Es. TEST-AB12" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-center font-mono tracking-widest focus:outline-none focus:border-indigo-500">
+                <p id="lookup-error" class="text-rose-400 text-xs text-center hidden">Codice non trovato. Controlla e riprova.</p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="resetToHome()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                    Indietro
+                </button>
+                <button onclick="verifyCode()" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                    Cerca
+                </button>
+            </div>
+        </div>
+
+        <!-- Sezione Visualizzatore Risposte Utente (da Codice) -->
+        <div id="user-answers-screen" class="hidden space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Dettaglio Risposte Utente</h2>
+                    <p class="text-xs text-indigo-400 font-mono" id="display-user-code">Codice: --</p>
+                </div>
+                <button onclick="showLookupScreen()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 cursor-pointer">
+                    Altro Codice
+                </button>
+            </div>
+            <div id="user-answers-list" class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <!-- Generato dinamicamente -->
+            </div>
+            <button onclick="resetToHome()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                Torna alla Home
+            </button>
+        </div>
+
+        <!-- Sezione Domande (Nascosta all'inizio) -->
+        <div id="quiz-screen" class="hidden space-y-8">
+            
+            <!-- Categoria e Progresso -->
+            <div class="flex justify-between items-center text-xs font-semibold tracking-wider text-indigo-400 uppercase">
+                <span id="category-badge" class="bg-indigo-950 px-3 py-1 rounded-full border border-indigo-800/50 text-indigo-300">CATEGORIA</span>
+            </div>
+            
+            <!-- Testo della Domanda -->
+            <div class="space-y-2 min-h-[90px]">
+                <h2 id="question-text" class="text-lg md:text-xl font-semibold text-white leading-snug">Testo dell'affermazione...</h2>
+            </div>
+            
+            <!-- Scala a 5 pallini (Likert) -->
+            <div class="space-y-3 pt-2">
+                <div class="flex justify-between items-center px-2 sm:px-6">
+                    <button onclick="selectScale(4)" class="scale-btn group flex flex-col items-center focus:outline-none cursor-pointer" data-value="4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-teal-500 flex items-center justify-center transition-all group-hover:scale-110 bg-transparent">
+                            <div class="inner-dot w-4 h-4 rounded-full bg-transparent transition-all"></div>
+                        </div>
+                    </button>
+                    <button onclick="selectScale(3)" class="scale-btn group flex flex-col items-center focus:outline-none cursor-pointer" data-value="3">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-teal-600/70 flex items-center justify-center transition-all group-hover:scale-110 bg-transparent">
+                            <div class="inner-dot w-3 h-3 rounded-full bg-transparent transition-all"></div>
+                        </div>
+                    </button>
+                    <button onclick="selectScale(2)" class="scale-btn group flex flex-col items-center focus:outline-none cursor-pointer" data-value="2">
+                        <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-slate-600 flex items-center justify-center transition-all group-hover:scale-110 bg-transparent">
+                            <div class="inner-dot w-2 h-2 rounded-full bg-transparent transition-all"></div>
+                        </div>
+                    </button>
+                    <button onclick="selectScale(1)" class="scale-btn group flex flex-col items-center focus:outline-none cursor-pointer" data-value="1">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-rose-500/70 flex items-center justify-center transition-all group-hover:scale-110 bg-transparent">
+                            <div class="inner-dot w-3 h-3 rounded-full bg-transparent transition-all"></div>
+                        </div>
+                    </button>
+                    <button onclick="selectScale(0)" class="scale-btn group flex flex-col items-center focus:outline-none cursor-pointer" data-value="0">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-rose-500 flex items-center justify-center transition-all group-hover:scale-110 bg-transparent">
+                            <div class="inner-dot w-4 h-4 rounded-full bg-transparent transition-all"></div>
+                        </div>
+                    </button>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 font-medium px-1">
+                    <span>Assolutamente sì</span>
+                    <span>Assolutamente no</span>
+                </div>
+            </div>
+
+            <!-- Pulsanti Indietro / Avanti -->
+            <div class="flex gap-4 pt-4 border-t border-slate-800/80">
+                <button onclick="prevQuestion()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                    Indietro
+                </button>
+                <button id="next-btn" onclick="nextQuestion()" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer opacity-50 cursor-not-allowed" disabled>
+                    Avanti
+                </button>
+            </div>
+        </div>
+
+        <!-- Sezione Risultato (Nascosta all'inizio) -->
+        <div id="result-screen" class="hidden space-y-8 py-2">
+            
+            <!-- Box Codice Univoco -->
+            <div class="bg-indigo-950/40 border border-indigo-800/60 p-4 rounded-xl text-center space-y-1">
+                <p class="text-xs text-indigo-300 font-medium">Il tuo codice univoco per rivedere le risposte:</p>
+                <div id="generated-code-display" class="text-lg font-mono font-bold text-white tracking-widest bg-slate-950 py-2 px-4 rounded-lg inline-block border border-indigo-900">--</div>
+            </div>
+
+            <!-- Box Risultato Totale (Cerchi) -->
+            <div class="bg-slate-950 border border-slate-800/80 p-6 rounded-2xl flex flex-col sm:flex-row justify-around items-center gap-6">
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-rose-400 text-rose-400 text-2xl font-bold mb-2 shadow-inner" id="total-affinita-circle">
+                        50%
+                    </div>
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Affinità (Sintonia)</div>
+                </div>
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-teal-400 text-teal-400 text-2xl font-bold mb-2 shadow-inner" id="total-somiglianza-circle">
+                        56%
+                    </div>
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Somiglianza (Speculare)</div>
+                </div>
+            </div>
+
+            <!-- Mappa per categoria (Grafico Radar) -->
+            <div class="bg-slate-950 border border-slate-800/80 p-6 rounded-2xl space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider">Mappa per categoria</h3>
+                    <div class="flex items-center gap-4 text-xs font-medium">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-400 inline-block"></span> Affinità</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-teal-400 inline-block"></span> Somiglianza</span>
+                    </div>
+                </div>
+                <div class="relative w-full h-72 flex justify-center">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Elenco Categorie (Dettaglio) -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Dettaglio Categorie</h3>
+                <div id="category-details-container" class="space-y-3">
+                    <!-- Generato dinamicamente -->
+                </div>
+            </div>
+
+            <button onclick="resetQuiz()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 cursor-pointer">
+                Ricomincia Test
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const originalQuestions = [
+            // 1. Morale, Società e Regole
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Aborro/Detesto gran parte delle religioni più per le loro rigide regole dogmatiche che per il funzionamento/promesse/riti della religione in sé.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Ritengo la famiglia il nucleo più importante nella vita di ogni individuo; è quindi compito di ogni figlio cercare di mantenere al meglio i rapporti parentali, anche se ciò dovesse significare limitare i propri obiettivi o sopportare comportamenti disfunzionali/disagianti dei membri della famiglia.", somiglianzaFissa: 1, affinitaFissa: 0 },
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Sono pronto a fare del male fisico o psicologico alle persone che mi hanno aiutato, accompagnato o amato nel corso della mia vita, se ciò mi portasse ad avvicinarmi alla mia concezione di stabilità mentale.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Il guadagno economico per me serve solo a favorire il mio benessere psicofisico; non mi interessa guadagnare o spendere per ottenere il rispetto degli altri.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Non penso che esistano due pesi e due misure nel modo in cui la società giudica la gravità degli errori degli individui in base a sesso, sessualità e nazionalità.", somiglianzaFissa: 1, affinitaFissa: 0 },
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Ci sono state volte in cui ho avuto la fredda e calcolata volontà di uccidere qualcuno, e non l'ho fatto esclusivamente per paura delle conseguenze legali, non per dubbi morali personali.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 1, category: "1. Morale, Società e Regole", text: "Considero la maggior parte delle persone nate per essere guidate o sottomesse, incapaci come sono di reggere il peso di un pensiero autonomo, e tendo a catalogare praticamente chiunque mi circondi in questa stessa categoria.", somiglianzaFissa: 3, affinitaFissa: 4 },
+
+            // 2. Rapporti e Intimità
+            { catId: 2, category: "2. Rapporti e Intimità", text: "Spesso penso di perdere tempo quando mi trovo circondato da altri esseri umani, e questo avviene nella gran parte dei contesti.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 2, category: "2. Rapporti e Intimità", text: "Se voglio confessare alcuni segreti o traumi della mia vita, preferisco farlo con persone che sono certo possano comprendere al meglio la mia situazione — anche se non ho costruito un gran legame con loro — piuttosto che con amici o familiari che ritengo non possano aiutarmi in alcuna maniera.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 2, category: "2. Rapporti e Intimità", text: "Spesso durante le uscite con amici/famigliari trovo una scappattoia/scusa per poter rimanere qualche momento da solo.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 2, category: "2. Rapporti e Intimità", text: "Mi capita spesso di pensare di agire come se nel mio corpo vivessero due anime diverse a seconda che mi trovi da solo o in compagnia, e non soltanto all'esterno, ma anche dentro di me.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 2, category: "2. Rapporti e Intimità", text: "Non è vero che la maggior parte della gente compie buone azioni solo per paura delle conseguenze delle cattive, e io ne sono la prova.", somiglianzaFissa: 2, affinitaFissa: 1 },
+
+            // 3. Indipendenza e Autonomia di coppia
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "Non mi interessa particolarmente avere una relazione monogama; ritengo che il sesso non debba essere così strettamente interconnesso al concetto di amore.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "Sarei disposto a sottomettermi al mio partner pur di sentirmi al sicuro, quantomeno nel rispetto della mia persona.", somiglianzaFissa: 1, affinitaFissa: 3 },
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "Non voglio estorcere parole o spiegazioni al mio partner: se siamo in sintonia, lo saremo anche se per il momento non abbiamo nulla da dirci.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "Sarei disposto a fare sesso con il mio partner se lo desidera fortemente, anche se in quel momento non ne ho voglia.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "Il mio partner deve essere in continua evoluzione; la relazione perfetta è quella in cui riusciamo a cambiare costantemente in perfetta sintonia.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "Vorrei che il mio partner avesse conoscenze negli ambiti a cui tengo di più che siano di gran lunga superiori alle mie, anche a costo di sentirmi inferiore, pur di imparare sempre qualcosa in più.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 3, category: "3. Indipendenza e Autonomia", text: "L'idea di costruire un futuro a lungo termine con qualcuno mi dà l'esatta sensazione di una condanna a morte lenta, e so che nessuno potrà mai farmi cambiare idea.", somiglianzaFissa: 2, affinitaFissa: 1 },
+
+            // 4. Ambizione e Stile di Vita
+            { catId: 4, category: "4. Ambizione e Stile di Vita", text: "Cerco modi intelligenti per ottenere risultati senza lavorare più del necessario, anche quando questi metodi possono risultare socialmente, legalmente o moralmente ambigui.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 4, category: "4. Ambizione e Stile di Vita", text: "Non riesco mai a rilassarmi completamente, poiché la mia mente è sempre in funzione, indipendentemente dall'ambiente o dai miei bisogni di riposo.", somiglianzaFissa: 4, affinitaFissa: 4 },
+            { catId: 4, category: "4. Ambizione e Stile di Vita", text: "Ho spesso fatto piani dettagliati e ben costruiti per poi abbandonarli per mia negligenza.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 4, category: "4. Ambizione e Stile di Vita", text: "Sono certo che, raggiungendo ricchezza economica e riconoscimento sociale, quasi tutti i miei problemi scompariranno.", somiglianzaFissa: 2, affinitaFissa: 1 },
+            { catId: 4, category: "4. Ambizione e Stile di Vita", text: "Se mi offrissero un lavoro che odio profondamente, accetterei comunque in cambio di una grandissima quantità di denaro, pur sapendo che si tratta di una routine a tempo pieno di otto ore al giorno per cinque giorni su sette.", somiglianzaFissa: 3, affinitaFissa: 3 },
+            { catId: 4, category: "4. Ambizione e Stile di Vita", text: "Non voglio soltanto accumulare abbastanza potere e risorse per bastare a me stesso, mi interessa anche lasciare un'eredità morale o un buon ricordo di me.", somiglianzaFissa: 2, affinitaFissa: 1 },
+
+            // 5. Solitudine e Tempo
+            { catId: 5, category: "5. Solitudine e Tempo", text: "Passo gran parte della giornata attendendo con gioia il momento in cui sarò da solo a casa.", somiglianzaFissa: 4, affinitaFissa: 4 },
+            { catId: 5, category: "5. Solitudine e Tempo", text: "Quando sono da solo, tendo a pensare che starei meglio se fossi in compagnia.", somiglianzaFissa: 1, affinitaFissa: 0 },
+            { catId: 5, category: "5. Solitudine e Tempo", text: "Ci sono pochissimi esseri umani con cui preferirei passare del tempo rispetto allo star da solo.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 5, category: "5. Solitudine e Tempo", text: "Sono molto meno produttivo quando sono da solo rispetto a quando mi ritrovo in un gruppo.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 5, category: "5. Solitudine e Tempo", text: "Mi capita spesso di provare emozioni forti come rabbia, tristezza o disgusto semplicemente pensando in solitudine.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 5, category: "5. Solitudine e Tempo", text: "Sento che la mia percezione della realtà è talmente distante da quella della gente comune che ogni tentativo di comunicazione verbale è tempo perso.", somiglianzaFissa: 2, affinitaFissa: 3 },
+
+            // 6. Sessualità
+            { catId: 6, category: "6. Sessualità e Passione", text: "Ritengo che conoscere i gusti o i feticci sessuali di qualcuno sia una delle maniere migliori per comprendere come ragiona.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 6, category: "6. Sessualità e Passione", text: "Mi capita a volte, dopo una giornata stressante o una situazione disagevole, di masturbarmi per rilassarmi e rimettere in ordine i pensieri.", somiglianzaFissa: 2, affinitaFissa: 2 },
+            { catId: 6, category: "6. Sessualità e Passione", text: "Guardo porno e scelgo spesso video particolari, ben lontani dal gusto comune.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 6, category: "6. Sessualità e Passione", text: "Non mi interessa fare nuove esperienze sessuali, nemmeno se circoscritte ai miei gusti già formati.", somiglianzaFissa: 1, affinitaFissa: 0 },
+            { catId: 6, category: "6. Sessualità e Passione", text: "Guardo spesso video porno hardcore: gangbang, sesso estremo o parafilie molto particolari.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 6, category: "6. Sessualità e Passione", text: "Vorrei fare sesso con un partner profondamente sadico o masochista.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 6, category: "6. Sessualità e Passione", text: "Vorrei fare sesso con un partner dipendente da sostanze o alcol mentre è pesantemente ubriaco o drogato.", somiglianzaFissa: 3, affinitaFissa: 4 },
+
+            // 7. Interessi e Originalità
+            { catId: 7, category: "7. Interessi e Originalità", text: "Quando mi interesso a un nuovo argomento, cerco sempre di esplorare gli angoli più di nicchia, anziché sviluppare una conoscenza generale della parte più superficiale.", somiglianzaFissa: 4, affinitaFissa: 4 },
+            { catId: 7, category: "7. Interessi e Originalità", text: "Mi ritrovo molto più spesso a essere quello che dà consigli o spiega certi argomenti ad amici e conoscenti, piuttosto che quello che chiede consigli o spiegazioni.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 7, category: "7. Interessi e Originalità", text: "Ritengo che l'arte sia la mia più grande passione, e dedico gran parte della giornata alla conoscenza approfondita dei suoi ambiti.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 7, category: "7. Interessi e Originalità", text: "Se un uomo ha una profonda passione e una solida conoscenza di un determinato argomento, si nota chiaramente; quando invece non vedo quella luce negli occhi parlando con gli altri, tendo a guardarli dall'alto in basso.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 7, category: "7. Interessi e Originalità", text: "Gran parte dei soldi che guadagno vengono spesi a supporto delle mie passioni più grandi, anche se queste ultime non mi aiutano direttamente a raggiungere un guadagno economico e non posso trarne profitto di alcun tipo, se non mentale.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 7, category: "7. Interessi e Originalità", text: "Non sono disposto a stravolgere i piani della mia giornata o della mia settimana per prendere parte fisicamente ad attività legate alle mie passioni, che si tratti di concerti, festival cinematografici o letterari, o fiere di videogiochi.", somiglianzaFissa: 2, affinitaFissa: 1 },
+            { catId: 7, category: "7. Interessi e Originalità", text: "Non provo alcun rispetto per chi consuma cultura in modo passivo o superficiale: se non si scava fino al marcio, non ha senso interessarsi a nulla.", somiglianzaFissa: 3, affinitaFissa: 4 },
+
+            // 8. Intensità e Rischio
+            { catId: 8, category: "8. Intensità e Rischio", text: "Tendo a mettere costantemente in dubbio gran parte delle mie idee, anche quelle su cui ho basato tutti i miei comportamenti e sogni, riformulandole e ricostruendole in base a quanto ritengo giusta la modifica.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 8, category: "8. Intensità e Rischio", text: "Mi muovo spesso in situazioni rischiose o pericolose, se ritengo di poterne trarre giovamento o piacere.", somiglianzaFissa: 4, affinitaFissa: 4 },
+            { catId: 8, category: "8. Intensità e Rischio", text: "Amo l'idea di conoscere persone mentalmente instabili o problematiche, e spesso in contesti insoliti, come la prigione, queste persone mi attirano in modo particolare.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 8, category: "8. Intensità e Rischio", text: "Sono attratto dall'idea di fare uso di sostanze stupefacenti potenti, a discapito della mia salute.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 8, category: "8. Intensità e Rischio", text: "Sono interessato a passare del tempo con estremisti politici o con persone gravemente dipendenti da droghe pesanti, unicamente per poter conversare con loro.", somiglianzaFissa: 3, affinitaFissa: 4 },
+            { catId: 8, category: "8. Intensità e Rischio", text: "Ho spesso paura che, continuando a vivere in questo modo, non rimarrò in vita a lungo.", somiglianzaFissa: 2, affinitaFissa: 3 },
+            { catId: 8, category: "8. Intensità e Rischio", text: "Fantastico spesso sull'idea di perdere tutto ciò che ho costruito, per provare il brivido di realize di aver buttato via la mia esistenza — come chi si rovina giocando d'azzardo.", somiglianzaFissa: 4, affinitaFissa: 4 }
+        ];
+
+        let questions = [];
+        let currentQIndex = 0;
+        let userAnswers = [];
+        let radarChartInstance = null;
+
+        // Funzione per mescolare l'array (Fisher-Yates)
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function startQuiz() {
+            questions = shuffleArray(originalQuestions);
+            userAnswers = new Array(questions.length).fill(null);
+            currentQIndex = 0;
+
+            document.getElementById('header-section').classList.add('hidden');
+            document.getElementById('lookup-screen').classList.add('hidden');
+            document.getElementById('user-answers-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function showLookupScreen() {
+            document.getElementById('header-section').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('user-answers-screen').classList.add('hidden');
+            document.getElementById('lookup-screen').classList.remove('hidden');
+            document.getElementById('lookup-code-input').value = '';
+            document.getElementById('lookup-error').classList.add('hidden');
+        }
+
+        function resetToHome() {
+            document.getElementById('lookup-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('user-answers-screen').classList.add('hidden');
+            document.getElementById('header-section').classList.remove('hidden');
+        }
+
+        function loadQuestion() {
+            const q = questions[currentQIndex];
+            document.getElementById('category-badge').innerText = `${q.category} • ${currentQIndex + 1}/${questions.length}`;
+            document.getElementById('question-text').innerText = q.text;
+
+            const selectedVal = userAnswers[currentQIndex];
+            document.querySelectorAll('.scale-btn').forEach(btn => {
+                const val = parseInt(btn.getAttribute('data-value'));
+                const dot = btn.querySelector('.inner-dot');
+                if (selectedVal !== null && val === selectedVal) {
+                    dot.className = "inner-dot w-4 h-4 rounded-full bg-indigo-400 transition-all shadow-md";
+                } else {
+                    dot.className = "inner-dot w-4 h-4 rounded-full bg-transparent transition-all";
+                }
+            });
+
+            const nextBtn = document.getElementById('next-btn');
+            if (selectedVal !== null) {
+                nextBtn.disabled = false;
+                nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                nextBtn.disabled = true;
+                nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function selectScale(val) {
+            userAnswers[currentQIndex] = val;
+
+            document.querySelectorAll('.scale-btn').forEach(btn => {
+                const bVal = parseInt(btn.getAttribute('data-value'));
+                const dot = btn.querySelector('.inner-dot');
+                if (bVal === val) {
+                    dot.className = "inner-dot w-4 h-4 rounded-full bg-indigo-400 transition-all shadow-md";
+                } else {
+                    dot.className = "inner-dot w-4 h-4 rounded-full bg-transparent transition-all";
+                }
+            });
+
+            const nextBtn = document.getElementById('next-btn');
+            nextBtn.disabled = false;
+            nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function nextQuestion() {
+            if (userAnswers[currentQIndex] === null) return;
+            if (currentQIndex < questions.length - 1) {
+                currentQIndex++;
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQIndex > 0) {
+                currentQIndex--;
+                loadQuestion();
+            }
+        }
+
+        function generateUniqueCode() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let code = "TEST-";
+            for (let i = 0; i < 5; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        function showResult() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+
+            // Salva nel localStorage con un codice univoco
+            const uniqueCode = generateUniqueCode();
+            const payload = {
+                questions: questions,
+                answers: userAnswers
+            };
+            localStorage.setItem(uniqueCode, JSON.stringify(payload));
+            document.getElementById('generated-code-display').innerText = uniqueCode;
+
+            let catMap = {};
+            questions.forEach((q, idx) => {
+                let catName = q.category;
+                if (!catMap[catName]) {
+                    catMap[catName] = { affSum: 0, simSum: 0, count: 0 };
+                }
+                let userVal = userAnswers[idx];
+                
+                let simDiff = Math.abs(userVal - q.somiglianzaFissa);
+                let simScore = Math.max(10, Math.round(100 - (simDiff / 4) * 100));
+
+                let affDiff = Math.abs(userVal - q.affinitaFissa);
+                let affScore = Math.max(10, Math.round(100 - (affDiff / 4) * 100));
+
+                catMap[catName].affSum += affScore;
+                catMap[catName].simSum += simScore;
+                catMap[catName].count += 1;
+            });
+
+            let labels = [];
+            let affData = [];
+            let simData = [];
+            let totalAff = 0;
+            let totalSim = 0;
+            let totalCats = 0;
+
+            const detailsContainer = document.getElementById('category-details-container');
+            detailsContainer.innerHTML = "";
+
+            for (let cat in catMap) {
+                let aAvg = Math.round(catMap[cat].affSum / catMap[cat].count);
+                let sAvg = Math.round(catMap[cat].simSum / catMap[cat].count);
+
+                labels.push(cat.split(".")[0]); 
+                affData.push(aAvg);
+                simData.push(sAvg);
+
+                totalAff += aAvg;
+                totalSim += sAvg;
+                totalCats += 1;
+
+                detailsContainer.innerHTML += `
+                    <div class="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-2">
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-white">${cat}</span>
+                        </div>
+                        <div class="space-y-1.5 text-xs">
+                            <div class="flex justify-between text-slate-400">
+                                <span>Affinità (Sintonia) ${aAvg}%</span>
+                                <span class="text-rose-400">${aAvg}%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div class="bg-rose-400 h-full rounded-full transition-all duration-500" style="width: ${aAvg}%"></div>
+                            </div>
+                            <div class="flex justify-between text-slate-400 pt-1">
+                                <span>Somiglianza (Speculare) ${sAvg}%</span>
+                                <span class="text-teal-400">${sAvg}%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div class="bg-teal-400 h-full rounded-full transition-all duration-500" style="width: ${sAvg}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            let finalAff = Math.round(totalAff / totalCats);
+            let finalSim = Math.round(totalSim / totalCats);
+
+            document.getElementById('total-affinita-circle').innerText = `${finalAff}%`;
+            document.getElementById('total-somiglianza-circle').innerText = `${finalSim}%`;
+
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Affinità (Sintonia)',
+                            data: affData,
+                            backgroundColor: 'rgba(251, 113, 133, 0.2)',
+                            borderColor: 'rgba(251, 113, 133, 1)',
+                            borderWidth: 2,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Somiglianza (Speculare)',
+                            data: simData,
+                            backgroundColor: 'rgba(45, 212, 191, 0.2)',
+                            borderColor: 'rgba(45, 212, 191, 1)',
+                            borderWidth: 2,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            ticks: { display: false, stepSize: 25 },
+                            grid: { color: 'rgba(51, 65, 85, 0.5)' },
+                            angleLines: { color: 'rgba(51, 65, 85, 0.5)' },
+                            pointLabels: {
+                                color: '#94a3b8',
+                                font: { size: 12, weight: 'bold' }
+                            }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function verifyCode() {
+            const inputCode = document.getElementById('lookup-code-input').value.trim().toUpperCase();
+            const errorElement = document.getElementById('lookup-error');
+            
+            const savedDataJSON = localStorage.getItem(inputCode);
+            if (!savedDataJSON) {
+                errorElement.classList.remove('hidden');
+                return;
+            }
+
+            errorElement.classList.add('hidden');
+            const data = JSON.parse(savedDataJSON);
+            
+            document.getElementById('display-user-code').innerText = `Codice: ${inputCode}`;
+            
+            const listContainer = document.getElementById('user-answers-list');
+            listContainer.innerHTML = "";
+
+            const scaleLabels = {
+                4: "Assolutamente sì",
+                3: "Probabilmente sì",
+                2: "Neutro / Indifferente",
+                1: "Probabilmente no",
+                0: "Assolutamente no"
+            };
+
+            data.questions.forEach((q, idx) => {
+                const ans = data.answers[idx];
+                listContainer.innerHTML += `
+                    <div class="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-2">
+                        <div class="text-xs font-semibold text-indigo-400">${q.category}</div>
+                        <div class="text-sm text-white font-medium">${q.text}</div>
+                        <div class="text-xs text-slate-300 bg-slate-900 py-1.5 px-3 rounded-lg border border-slate-800 flex justify-between items-center">
+                            <span>Risposta data:</span>
+                            <span class="font-semibold text-teal-400">${scaleLabels[ans] !== undefined ? scaleLabels[ans] : 'Non risposto'}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('lookup-screen').classList.add('hidden');
+            document.getElementById('user-answers-screen').classList.remove('hidden');
+        }
+
+        function resetQuiz() {
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('header-section').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
